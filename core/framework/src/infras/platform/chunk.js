@@ -37,4 +37,62 @@ function requireBundleChunk(filePath) {
   return cont
 }
 
-export { registerBundleChunks, requireBundleChunk }
+const templateJsonMap = new Map()
+const styleJsonMap = new Map()
+function registerComponentJson(templateJson, cssJson) {
+  if (typeof templateJson === 'string') {
+    templateJson = JSON.parse(templateJson)
+  }
+  for (const compPath in templateJson) {
+    if (templateJson.hasOwnProperty(compPath)) {
+      let pathKey = compPath
+      if (pathKey.startsWith('/')) {
+        pathKey = pathKey.replace(/^\/+/, '')
+      }
+      const templateObj = templateJson[compPath]
+      templateJsonMap.set(pathKey, templateObj)
+    }
+  }
+
+  if (typeof cssJson === 'string') {
+    cssJson = JSON.parse(cssJson)
+  }
+  for (const compPath in cssJson) {
+    if (cssJson.hasOwnProperty(compPath)) {
+      let pathKey = compPath
+      if (pathKey.startsWith('/')) {
+        pathKey = pathKey.replace(/^\/+/, '')
+      }
+      const styleObj = cssJson[compPath]
+      styleJsonMap.set(pathKey, styleObj)
+    }
+  }
+}
+
+function requireJson(compPath, options) {
+  try {
+    if (options && options.styleObjectId) {
+      const styleObj = JSON.parse(styleJsonMap.get(compPath))
+      if (!styleObj) {
+        console.warn(
+          `### App Framework ### requireJson not exist ${compPath} -- options: ${JSON.stringify(
+            options
+          )}`
+        )
+      }
+      return styleObj[options.styleObjectId]
+    } else if (options && options.componentPath) {
+      const templateObj = JSON.parse(templateJsonMap.get(compPath))
+      if (!templateObj) {
+        console.warn(
+          `### App Framework ### requireJson not exist ${compPath} -- options: ${JSON.stringify(
+            options
+          )}`
+        )
+      }
+      return templateObj[options.componentPath]
+    }
+  } catch (e) {}
+}
+
+export { registerBundleChunks, requireBundleChunk, registerComponentJson, requireJson }

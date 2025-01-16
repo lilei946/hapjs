@@ -405,6 +405,11 @@ export default class XVm {
     }
     options = options || {}
 
+    if (options.style && options.style.extracted) {
+      preHandleTemplate(options.template)
+      preHandleStyle(options)
+    }
+
     // 页面级Vm：i18n配置合并
     if (this._isPageVm() && this._page.app) {
       const ret = this._page.app.getLocaleConfig()
@@ -1192,4 +1197,46 @@ XVm.mixin = function(options) {
       console.warn(`### App Framework ### 插件定义的函数: ${key}，不属于页面生命周期函数`)
     }
   }
+}
+
+function preHandleTemplate(target) {
+  if (!target) return
+
+  Object.keys(target).forEach(key => {
+    if (Object.prototype.toString.call(target[key]) === '[object Object]') {
+      preHandleTemplate(target[key])
+    } else if (Object.prototype.toString.call(target[key]) === '[object Array]') {
+      target[key].forEach(item => {
+        preHandleTemplate(item)
+      })
+    } else if (typeof target[key] === 'string') {
+      if (target[key].indexOf('function') < 0) {
+        if (key.startsWith('$')) {
+          const trimKey = key.substring(1)
+          const func = `function () { return this.${target[key]} }`
+          target[trimKey] = new Function(`return ${func}`)()
+
+          delete target[key]
+        }
+      } else {
+        if (key.startsWith('$')) {
+          const trimKey = key.substring(1)
+          target[trimKey] = new Function(`return ${target[key]}`)()
+
+          delete target[key]
+        } else {
+          target[key] = new Function(`return ${target[key]}`)()
+        }
+      }
+    }
+  })
+}
+
+function preHandleStyle(options) {
+  if (!options.style) return
+
+  const styleObjectId = options.style['@info'].styleObjectId
+  const jsonPath = options.style.jsonPath
+
+  options.style = context.quickapp.platform.requireJson(jsonPath, { styleObjectId }) || {}
 }
